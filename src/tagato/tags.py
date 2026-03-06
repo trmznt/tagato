@@ -547,6 +547,7 @@ _paired_tags = [
     "body",
     "time",
     "strong",
+    "small",
 ]
 for _tag_name in _paired_tags:
     attrs = {"_inline": True} if _tag_name in _inline_tags else {}
