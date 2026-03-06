@@ -325,9 +325,10 @@ def get_theme() -> CSSTheme:
 class HTMLForm(t.pairedtag):
     """Top-level <form> element with preprocessing support.
 
-    Acts as the root container for all form fields.  Child elements
-    that define ``preprocess()`` or ``async_preprocess()`` will be
-    invoked by the corresponding form-level methods.
+    Acts as the root container for all form fields.
+    Fields that require pre-populated values, eg. select input, can
+    be populated later using opts(options=...) or an InputProvider callback,
+    so the form can be rendered.
     """
 
     _newline: bool = True
@@ -359,18 +360,6 @@ class HTMLForm(t.pairedtag):
     def _tag(self) -> str:
         """Render as <form> regardless of class name."""
         return "form"
-
-    def preprocess(self) -> None:
-        """Run synchronous preprocessing on all registered child elements."""
-        for element in self.elements.values():
-            if hasattr(element, "preprocess"):
-                element.preprocess()
-
-    async def async_preprocess(self) -> None:
-        """Run async preprocessing on all registered child elements."""
-        for element in self.elements.values():
-            if hasattr(element, "async_preprocess"):
-                await element.async_preprocess()
 
 
 # ---------------------------------------------------------------------------
@@ -428,9 +417,7 @@ class BaseInput(t.Tag):
         error: str = "",
         **kwargs: Any,
     ) -> None:
-        print(
-            f"Initialized {self.__class__.__name__} with input_provider={input_provider!r}"
-        )
+
         # Validate input_provider if given
         if input_provider is not None and not isinstance(input_provider, InputProvider):
             raise TypeError(
