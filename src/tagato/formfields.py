@@ -462,13 +462,13 @@ class BaseInput(t.Tag):
         # Priority 3: explicit value, or empty string fallback
         return self.value if self.value is not None else ""
 
-    def get_options(self) -> list[tuple[str, str]]:
+    def get_options(self) -> list[tuple[str, str]] | None:
         """Return options list from self.options or input_provider."""
         if self.options is not None:
             return self.options
         if self.input_provider is not None:
             return self.input_provider.get_options()
-        return []
+        return None
 
     def is_readonly(self) -> bool:
         """Check readonly state: field-level override, then container default."""
@@ -492,6 +492,7 @@ class BaseInput(t.Tag):
 
         if kwargs:
             raise ValueError(f"Unprocessed options: {', '.join(kwargs)}")
+
         return self
 
     # -- Theme shorthand --
@@ -794,9 +795,9 @@ class SelectInput(BaseInput):
             return super().render_input(value=norm_value[1])
 
         options = self.get_options()
-        if not options:
+        if options is None:
             raise RuntimeError(
-                "SelectInput has no options. Please populate options via"
+                "SelectInput options is None. Please populate options via "
                 "the options parameter or input_provider if using callback."
             )
 
