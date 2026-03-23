@@ -263,9 +263,9 @@ class Bootstrap53Theme(CSSTheme):
     # -- Readonly badges --
 
     def badge_checked(self, label: str) -> t.Tag:
-        return t.span(class_="badge text-bg-success border border-success")[
-            t.i(class_="bi bi-check-lg me-1"), escape(label)
-        ]
+        return t.span(
+            class_="badge bg-success-subtle text-success-emphasis border border-success"
+        )[t.i(class_="bi bi-check-lg me-1"), escape(label)]
 
     def badge_unchecked(self, label: str) -> t.Tag:
         return t.span(
@@ -279,9 +279,9 @@ class Bootstrap53Theme(CSSTheme):
         ]
 
     def badge_selected(self, text: str) -> t.Tag:
-        return t.span(class_="badge text-bg-primary border border-primary")[
-            t.i(class_="bi bi-check-lg me-1"), escape(text)
-        ]
+        return t.span(
+            class_="badge bg-success-subtle text-success-emphasis border border-primary"
+        )[t.i(class_="bi bi-check-lg me-1"), escape(text)]
 
     # -- Popover --
 
@@ -412,9 +412,11 @@ class BaseInput(t.Tag):
         offset: int = 2,
         extra_control: str = "",
         readonly: bool | None = None,
+        multiple: bool = False,
         input_style: str = "",
         popover: str = "",
         error: str = "",
+        always_show_input: bool = False,
         **kwargs: Any,
     ) -> None:
 
@@ -444,11 +446,32 @@ class BaseInput(t.Tag):
         self.readonly = readonly
         self.input_style = input_style
         self.popover = popover
+        self.multiple = multiple
+        self.always_show_input = always_show_input
 
     # -- Value accessors --
 
-    def get_value(self) -> str | tuple[int | str, str] | bool | None:
-        """Return the field value using the resolution order documented above."""
+    def get_value(
+        self,
+    ) -> str | tuple[int | str, str] | list[tuple[int | str, str]] | bool | None:
+        """Return the field value using a deterministic precedence.
+
+        Resolution order:
+        1. ``update_dict[self.name]`` when present and not ``None``.
+        2. ``input_provider.get_value()`` when no explicit ``self.value`` exists.
+        3. Explicit ``self.value``.
+        4. ``""`` as the final fallback.
+
+        Returns:
+            The resolved value for this field. Depending on field type this may
+            be:
+            a string,
+            a ``(value, label)`` tuple for select fields,
+            a list of such tuples for multi-selects,
+            a boolean,
+            or ``None`` (if provided by an input provider).
+        """
+
         # Priority 1: update_dict overrides (e.g. from POST data)
         if self.update_dict is not None:
             val = self.update_dict.get(self.name)
@@ -780,19 +803,32 @@ class SelectInput(BaseInput):
     def render_input(self, value: Any = None) -> t.Tag:
         theme = self._theme()
         readonly = self.is_readonly()
-        raw_value = value if value is not None else self.get_value()
 
-        # Normalize value to a (key, display_text) tuple
-        if raw_value is None:
-            norm_value: tuple[str, str] = ("", "")
-        elif isinstance(raw_value, str):
-            norm_value = (raw_value, raw_value)
+        raw_value = value if value is not None else self.get_value()
+        # raw value can be a string or a (value, display_text) tuple;
+        # normalize to tuple
+        # for multiple selects, raw_value can be a list of strings or tuples;
+        # normalize to list of tuples
+
+        # Normalize value to a (key, display_text) tuple if not multiple
+        if not self.multiple:
+            if raw_value is None:
+                norm_value: tuple[str, str] = ("", "")
+            elif isinstance(raw_value, str):
+                norm_value = (raw_value, raw_value)
+            else:
+                norm_value = raw_value  # already a tuple
         else:
-            norm_value = raw_value  # already a tuple
+            norm_value = raw_value if isinstance(raw_value, list) else []
 
         # Readonly: render as a plain-text input showing the display text
-        if readonly:
-            return super().render_input(value=norm_value[1])
+        if readonly and not self.always_show_input:
+            if not self.multiple:
+                return super().render_input(value=norm_value[1])
+            else:
+                return super().render_input(
+                    value=", ".join(text for _, text in norm_value) or ""
+                )
 
         options = self.get_options()
         if options is None:
@@ -801,15 +837,23 @@ class SelectInput(BaseInput):
                 "the options parameter or input_provider if using callback."
             )
 
+        if not self.multiple:
+            selection = [norm_value[0]]
+        else:
+            selection = (
+                [val for val, _ in norm_value] if isinstance(raw_value, list) else []
+            )
+
         select_tag = t.select(
             id=self.id,
             name=self.name,
             class_=theme.select_class(error=bool(self.error)),
             style=self.input_style,
             disabled=readonly,
+            multiple=self.multiple,
         )[
             [
-                t.option(value=val, selected=(val == norm_value[0]))[text]
+                t.option(value=val, selected=(val in selection))[text]
                 for val, text in options
             ]
         ]
