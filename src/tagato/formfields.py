@@ -417,6 +417,7 @@ class BaseInput(t.Tag):
         popover: str = "",
         error: str = "",
         always_show_input: bool = False,
+        override_theme: CSSTheme | None = None,
         **kwargs: Any,
     ) -> None:
 
@@ -448,6 +449,7 @@ class BaseInput(t.Tag):
         self.popover = popover
         self.multiple = multiple
         self.always_show_input = always_show_input
+        self._override_theme = override_theme
 
     # -- Value accessors --
 
@@ -522,6 +524,8 @@ class BaseInput(t.Tag):
 
     def _theme(self) -> CSSTheme:
         """Return the active theme instance."""
+        if self._override_theme is not None:
+            return self._override_theme
         return get_theme()
 
     # -- Rendering components --
