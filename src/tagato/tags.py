@@ -74,7 +74,7 @@ class Tag(metaclass=_SelfInstantiating):
 
     def __init__(
         self,
-        *,
+        *args: Any,
         id: str | None = None,
         name: str | None = None,
         class_: str | None = None,
@@ -83,6 +83,21 @@ class Tag(metaclass=_SelfInstantiating):
         _register: bool = True,
         **kwargs: Any,
     ) -> None:
+
+        if any(args):
+            for arg in args:
+                # check if arg is a dict (of attributes) or a string starts with # (for id and name)
+                if isinstance(arg, dict):
+                    kwargs.update(arg)
+                elif isinstance(arg, str) and arg.startswith("#"):
+                    name = arg[1:]
+                else:
+                    raise ValueError(
+                        "Invalid positional arguments: expected a dict of attributes or "
+                        "a string starting with '#' for id. "
+                        f"Got {type(arg).__name__}: {arg!r}"
+                    )
+
         # Normalize identity attributes by stripping whitespace
         self.name = name.strip() if name else None
         self.id = id.strip() if id else self.name
