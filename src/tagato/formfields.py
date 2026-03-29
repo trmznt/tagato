@@ -641,6 +641,10 @@ class FileInput(BaseInput):
 
     _type = "file"
 
+    def __init__(self, removal_flag: str | None = None, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.removal_flag = removal_flag
+
     def render_input(self, value: Any = None) -> t.Tag:
         theme = self._theme()
         readonly = self.is_readonly()
@@ -653,8 +657,25 @@ class FileInput(BaseInput):
                 t.div(class_="form-control-plaintext")[escape(filename)]
             ]
 
+        removal_flag = f"{self.name}{self.removal_flag}" if self.removal_flag else None
         return t.div(class_=theme.value_col(self.size))[
-            t.div(class_="form-control-plaintext")[escape(filename)],
+            t.div("#filename", class_="form-control-plaintext")[
+                escape(filename),
+                (
+                    t.button(
+                        type="button",
+                        onclick=f"document.getElementsByName('{removal_flag}')[0].value = 'true'; this.parentElement.remove();",
+                        class_="btn btn-sm btn-outline-secondary ms-2",
+                    )[t.i(class_="bi bi-x-circle-fill"), " Remove"]
+                    if (removal_flag and value)
+                    else None
+                ),
+            ],
+            (
+                t.input(type="hidden", name=removal_flag, value="", _register=False)
+                if (removal_flag and value)
+                else None
+            ),
             t.input(
                 type=self._type,
                 id=self.id,
