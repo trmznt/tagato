@@ -514,6 +514,7 @@ class BaseInput(t.Tag):
         self.error = kwargs.pop("error", self.error)
         self.info = kwargs.pop("info", self.info)
         self.options = kwargs.pop("options", self.options)
+        self.value = kwargs.pop("value", self.value)
 
         if kwargs:
             raise ValueError(f"Unprocessed options: {', '.join(kwargs)}")
@@ -633,6 +634,38 @@ class EmailInput(BaseInput):
     """Email <input>."""
 
     _type = "email"
+
+
+class FileInput(BaseInput):
+    """File <input>."""
+
+    _type = "file"
+
+    def render_input(self, value: Any = None) -> t.Tag:
+        theme = self._theme()
+        readonly = self.is_readonly()
+        value = value if value is not None else self.get_value()
+        filename = value if value else "No file"
+
+        if readonly:
+            # Show the filename as plain text in readonly mode (no input)
+            return t.div(class_=theme.value_col(self.size))[
+                t.div(class_="form-control-plaintext")[escape(filename)]
+            ]
+
+        return t.div(class_=theme.value_col(self.size))[
+            t.div(class_="form-control-plaintext")[escape(filename)],
+            t.input(
+                type=self._type,
+                id=self.id,
+                name=self.name,
+                class_=theme.input_class(error=bool(self.error)),
+                placeholder=self.placeholder,
+                style=self.input_style,
+                readonly=readonly,
+            ),
+            theme.error_feedback(self.error),
+        ]
 
 
 class TextAreaInput(BaseInput):
