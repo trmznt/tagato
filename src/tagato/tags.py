@@ -133,6 +133,9 @@ class Tag(metaclass=_SelfInstantiating):
     def add(self, *elements: Tag | Markup | str) -> Self:
         """Append elements to this tag and register any Tag children by id."""
         for element in elements:
+            # True, None and False render as nothing in HTML, so skip them entirely
+            if element in (True, None, False, ""):
+                continue
             # Auto-instantiate Tag classes passed without parentheses (e.g. br)
             if isinstance(element, type) and issubclass(element, Tag):
                 element = element()
