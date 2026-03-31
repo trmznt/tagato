@@ -28,7 +28,7 @@ legend = t.legend
 class InputProvider(Protocol):
     """Protocol for objects that supply input field values and metadata."""
 
-    def get_value(self) -> str | tuple[int | str, str] | bool | None:
+    def get_value(self) -> str | tuple[int | str, str | Any] | bool | None:
         """Return the current value.
 
         Can be a string, a (value, display_text) tuple for selects/radios,
@@ -36,7 +36,7 @@ class InputProvider(Protocol):
         """
         ...
 
-    def get_options(self) -> list[tuple[str, str]]:
+    def get_options(self) -> list[tuple[str, str | Any]]:
         """Return options as (value, display_text) pairs."""
         ...
 
