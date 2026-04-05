@@ -9,6 +9,8 @@ __license__ = "MIT"
 
 
 from typing import Self, Any
+from functools import cached_property
+
 from markupsafe import Markup, escape
 
 literal = Markup
@@ -258,7 +260,7 @@ class Tag(metaclass=_SelfInstantiating):
         """Shorthand for ``set_attributes``."""
         return self.set_attributes(kwargs)
 
-    @property
+    @cached_property
     def _tag(self) -> str:
         """Return the lowercase HTML tag name derived from the class name."""
         return self.__class__.__name__.lower()
