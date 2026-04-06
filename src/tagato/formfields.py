@@ -417,6 +417,7 @@ class BaseInput(t.Tag):
         popover: str = "",
         error: str = "",
         always_show_input: bool = False,
+        ignore_disabled: bool = False,
         override_theme: CSSTheme | None = None,
         **kwargs: Any,
     ) -> None:
@@ -450,6 +451,7 @@ class BaseInput(t.Tag):
         self.multiple = multiple
         self.always_show_input = always_show_input
         self._override_theme = override_theme
+        self.ignore_disabled = ignore_disabled
 
     # -- Value accessors --
 
@@ -907,7 +909,7 @@ class SelectInput(BaseInput):
             name=self.name,
             class_=theme.select_class(error=bool(self.error)),
             style=self.input_style,
-            disabled=readonly,
+            disabled=readonly if not self.ignore_disabled else False,
             multiple=self.multiple,
         )[
             [
