@@ -265,6 +265,17 @@ class Tag(metaclass=_SelfInstantiating):
         """Return the lowercase HTML tag name derived from the class name."""
         return self.__class__.__name__.lower()
 
+    def r(self) -> Markup:
+        """Render this tag and its contents to an HTML string.
+
+        Override in subclasses to provide concrete rendering logic.  The
+        base implementation renders children joined by newlines without
+        any wrapping element.
+        """
+        raise NotImplementedError(
+            "Base Tag does not implement rendering; use a subclass."
+        )
+
     def __html__(self) -> Markup:
         return self.r()
 
