@@ -396,6 +396,7 @@ class BaseInput(t.Tag):
     """
 
     _type: str = "text"
+    label: str | None
 
     def __init__(
         self,
@@ -743,9 +744,9 @@ class CheckboxInput(BaseInput):
         # Readonly: coloured badge instead of interactive checkbox
         if self.is_readonly():
             return (
-                theme.badge_checked(self.label)
+                theme.badge_checked(self.label or "Unchecked")
                 if self.get_value()
-                else theme.badge_unchecked(self.label)
+                else theme.badge_unchecked(self.label or "Unchecked")
             )
 
         # Editable: hidden fallback "off" + visible checkbox
@@ -822,7 +823,7 @@ class RadioInput(BaseInput):
 
         # Resolve value; for radios the value selects which option is checked
         resolved_value = value if value is not None else self.get_value()
-        options = self.get_options()
+        options = self.get_options() or []
 
         # Readonly: show a badge for the selected option
         if readonly:
@@ -870,24 +871,46 @@ class SelectInput(BaseInput):
         # for multiple selects, raw_value can be a list of strings or tuples;
         # normalize to list of tuples
 
-        # Normalize value to a (key, display_text) tuple if not multiple
+        # Normalize values to one of:
+        # - single: (value, display_text)
+        # - multiple: list[(value, display_text)]
+        norm_single_value: tuple[int | str, str] = ("", "")
+        norm_multiple_value: list[tuple[int | str, str]] = []
+
         if not self.multiple:
             if raw_value is None:
-                norm_value: tuple[str, str] = ("", "")
+                norm_single_value = ("", "")
             elif isinstance(raw_value, str):
-                norm_value = (raw_value, raw_value)
+                norm_single_value = (raw_value, raw_value)
+            elif (
+                isinstance(raw_value, tuple)
+                and len(raw_value) == 2
+                and isinstance(raw_value[0], (int, str))
+                and isinstance(raw_value[1], str)
+            ):
+                norm_single_value = raw_value
             else:
-                norm_value = raw_value  # already a tuple
-        else:
-            norm_value = raw_value if isinstance(raw_value, list) else []
+                raise ValueError(
+                    f"Invalid value for SelectInput: {raw_value!r}. "
+                    "Expected a string or a (value, display_text) tuple."
+                )
+        elif isinstance(raw_value, list):
+            if all(
+                isinstance(item, tuple)
+                and len(item) == 2
+                and isinstance(item[0], (int, str))
+                and isinstance(item[1], str)
+                for item in raw_value
+            ):
+                norm_multiple_value = raw_value
 
         # Readonly: render as a plain-text input showing the display text
         if readonly and not self.always_show_input:
             if not self.multiple:
-                return super().render_input(value=norm_value[1])
+                return super().render_input(value=norm_single_value[1])
             else:
                 return super().render_input(
-                    value=", ".join(text for _, text in norm_value) or ""
+                    value=", ".join(text for _, text in norm_multiple_value) or ""
                 )
 
         options = self.get_options()
@@ -898,11 +921,9 @@ class SelectInput(BaseInput):
             )
 
         if not self.multiple:
-            selection = [norm_value[0]]
+            selection = [norm_single_value[0]]
         else:
-            selection = (
-                [val for val, _ in norm_value] if isinstance(raw_value, list) else []
-            )
+            selection = [val for val, _ in norm_multiple_value]
 
         select_tag = t.select(
             id=self.id,
