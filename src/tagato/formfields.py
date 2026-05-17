@@ -287,10 +287,10 @@ class Bootstrap53Theme(CSSTheme):
 
     def popover_attrs(self, title: str, content: str) -> dict[str, str]:
         return {
-            "data_bs_toggle": "popover",
-            "data_bs_placement": "top",
-            "data_bs_title": title,
-            "data_bs_content": content,
+            "data-bs-toggle": "popover",
+            "data-bs-placement": "top",
+            "data-bs-title": title,
+            "data-bs-content": content,
         }
 
 
@@ -479,6 +479,8 @@ class BaseInput(t.Tag):
 
         # Priority 1: update_dict overrides (e.g. from POST data)
         if self.update_dict is not None:
+            if not self.name:
+                raise ValueError("Field with update_dict must have a name")
             val = self.update_dict.get(self.name)
             if val is not None:
                 return val
@@ -540,14 +542,14 @@ class BaseInput(t.Tag):
             return ""
 
         theme = self._theme()
-        extra_attrs: dict[str, str] = {}
+        extra_attrs: dict[str, Any] = {}
 
         # Attach popover data attributes if configured
         if self.popover:
             extra_attrs = theme.popover_attrs(title=self.label, content=self.popover)
 
         return t.label(
-            class_=theme.label_class(self.offset),
+            class_=theme.check_group_label_class(self.offset),
             for_=self.name,
             **extra_attrs,
         )[escape(self.label)]
@@ -789,7 +791,7 @@ class CheckboxGroupInput(BaseInput):
         if self.label is None:
             return ""
         theme = self._theme()
-        extra_attrs: dict[str, str] = {}
+        extra_attrs: dict[str, Any] = {}
         if self.popover:
             extra_attrs = theme.popover_attrs(title=self.label, content=self.popover)
         return t.label(
@@ -874,7 +876,7 @@ class SelectInput(BaseInput):
         # Normalize values to one of:
         # - single: (value, display_text)
         # - multiple: list[(value, display_text)]
-        norm_single_value: tuple[int | str, str] = ("", "")
+        norm_single_value: tuple[int | str | None, str] = ("", "")
         norm_multiple_value: list[tuple[int | str, str]] = []
 
         if not self.multiple:
@@ -889,6 +891,12 @@ class SelectInput(BaseInput):
                 and isinstance(raw_value[1], str)
             ):
                 norm_single_value = raw_value
+            elif (
+                isinstance(raw_value, tuple)
+                and len(raw_value) == 2
+                and raw_value[0] is None
+            ):
+                norm_single_value = (None, "")
             else:
                 raise ValueError(
                     f"Invalid value for SelectInput: {raw_value!r}. "
